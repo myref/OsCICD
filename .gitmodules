@@ -1,0 +1,6 @@
+[submodule "robot"]
+	path = robot
+	url = https://github.com/myref/OsTest.git
+[submodule "ansible"]
+	path = ansible
+	url = https://github.com/myref/OsDeploy.git
