@@ -12,6 +12,11 @@ terraform {
   }
 
   backend "pg" {
-    conn_str = "postgres://terraform:terraform@cicdtoolbox-db.internal.provider.test/terraform"
+    conn_str = "postgres://terraform:terraform@cicdtoolbox-db/terraform"
   }
+}
+
+provider "libvirt" {
+  # Configuration options
+  uri = "qemu+ssh://kvmuser@kvmhost/system"
 }
