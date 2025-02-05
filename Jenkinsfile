@@ -65,7 +65,10 @@ pipeline {
                              steps {
                                 echo "Deploying infrastructure for stage ${this_stage}"
                                 sh "terraform apply -input=false -auto-approve -var-file='target.auto.tfvars.json'"
-                                node_ip = sh(returnStdout: true, script: "terraform output node_ip").trim()
+                                script {
+                                    node_ip = sh(returnStdout: true, script: "terraform output node_ip").trim()
+                                }
+                                
                              }
                          }
                     }
