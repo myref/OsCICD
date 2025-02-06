@@ -132,7 +132,7 @@ pipeline {
                     echo "${files}"
                     files.each { f -> 
                         if (f.name != ".gitignore") {
-                            sh 'pulp --base-url https://pulp.tooling.' + "${env.DOMAIN_NAME_SL}" + '.' + "${env.DOMAIN_NAME_TL}" + ' --no-verify-ssl --username $PULP_CRED_USR --password $PULP_CRED_PSW} file content upload --repository ' + "${pulp_repo}" + ' --file ' + "${f.name}" + ' --relative-path ' + "${gitCommit}" + '/' + "${f.name}"
+                            sh 'pulp --base-url https://pulp.tooling.' + "${env.DOMAIN_NAME_SL}" + '.' + "${env.DOMAIN_NAME_TL}" + ' --no-verify-ssl --username $PULP_CRED_USR --password $PULP_CRED_PSW file content upload --repository ' + "${pulp_repo}" + ' --file ' + "${f.name}" + ' --relative-path ' + "${gitCommit}" + '/' + "${f.name}"
                         }
                     }
                 }
