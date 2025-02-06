@@ -27,7 +27,7 @@ pipeline {
     environment {
         JENKINS_CRED = credentials('jenkins-jenkins')
         PULP_CRED = credentials('jenkins-pulp')
-        GIT_REPO_NAME = "OsCICD"
+        GIT_REPO_NAME = "."
     }
 
     stages {
@@ -55,20 +55,17 @@ pipeline {
                                 script {
                                     currentBuild.displayName = params.version
                                 }
-                                sh "terraform init -input=false"
+                                sh "terraform -chdir=${GIT_REPO_NAME} init -input=false"
                                 sh "terraform workspace new ${gitCommit}"
-                                sh "terraform plan -input=false -var-file='target.auto.tfvars.json'"
+                                //sh "terraform -chdir=${GIT_REPO_NAME} plan -input=false -var-file='target.auto.tfvars.json'"
 
                             }
                         }
                          stage('Apply') {
                              steps {
                                 echo "Deploying infrastructure for stage ${this_stage}"
-                                sh "terraform apply -input=false -auto-approve -var-file='target.auto.tfvars.json'"
-                                script {
-                                    node_ip = sh(returnStdout: true, script: "terraform output node_ip").trim()
-                                }
-                                
+                                //  sh "terraform -chdir=${GIT_REPO_NAME} apply -input=false -auto-approve -var-file='target.auto.tfvars.json'"
+                                // node_ip = sh(returnStdout: true, script: "terraform output node_ip").trim()
                              }
                          }
                     }
@@ -135,7 +132,7 @@ pipeline {
                     echo "${files}"
                     files.each { f -> 
                         if (f.name != ".gitignore") {
-                            sh "pulp --no-verify-ssl --username ${PULP_CRED_USR} --password ${PULP_CRED_PSW} file content upload --repository ${pulp_repo} --file ${f.name} --relative-path ${gitCommit}/${f.name}"
+                            sh "pulp --base-url https://pulp.tooling.provider.test --no-verify-ssl --username ${PULP_CRED_USR} --password ${PULP_CRED_PSW} file content upload --repository ${pulp_repo} --file ${f.name} --relative-path ${gitCommit}/${f.name}"
                         }
                     }
                 }
@@ -196,19 +193,19 @@ def prepare(stage, commit) {
 
 def startagent(branch, build, commit) {
     echo "Create Jenkins build node placeholder for repository: ${GIT_REPO_NAME}, branch: ${branch}, build: ${build} (commit:  ${commit})"
-    // sh 'curl -L -s -o /dev/null -u ' + "${JENKINS_CRED}" + ' -H Content-Type:application/x-www-form-urlencoded -X POST -d \'json={"name":+"' + "${GIT_REPO_NAME}" + "-" + "${branch}" + "-" + "${commit}" + '",+"nodeDescription":+"${GIT_REPO_NAME}:+' + "${GIT_REPO_NAME}" + "-" + "${branch}" + "-" + "${commit}" + '",+"numExecutors":+"1",+"remoteFS":+"/home/jenkins",+"labelString":+"' + "${GIT_REPO_NAME}" + "-" + "${branch}" + "-"+ "${commit}" + '",+"mode":+"EXCLUSIVE",+"":+["hudson.slaves.JNLPLauncher",+"hudson.slaves.RetentionStrategy$Always"],+"launcher":+{"stapler-class":+"hudson.slaves.JNLPLauncher",+"$class":+"hudson.slaves.JNLPLauncher",+"workDirSettings":+{"disabled":+false,+"workDirPath":+"",+"internalDir":+"remoting",+"failIfWorkDirIsMissing":+false},+"tunnel":+"",+"vmargs":+""},+"retentionStrategy":+{"stapler-class":+"hudson.slaves.RetentionStrategy$Always",+"$class":+"hudson.slaves.RetentionStrategy$Always"},+"nodeProperties":+{"stapler-class-bag":+"true"},+"type":+"hudson.slaves.DumbSlave"}\' "' + "${env.JENKINS_URL}" + 'computer/doCreateItem?name="' + "${GIT_REPO_NAME}" + "-" + "${branch}" + "-" + "${commit}" + '"&type=hudson.slaves.DumbSlave"'
+    //sh 'curl -L -s -o /dev/null -u ' + "${JENKINS_CRED}" + ' -H Content-Type:application/x-www-form-urlencoded -X POST -d \'json={"name":+"' + "${GIT_REPO_NAME}" + "-" + "${branch}" + "-" + "${commit}" + '",+"nodeDescription":+"${GIT_REPO_NAME}:+' + "${GIT_REPO_NAME}" + "-" + "${branch}" + "-" + "${commit}" + '",+"numExecutors":+"1",+"remoteFS":+"/home/jenkins",+"labelString":+"' + "${GIT_REPO_NAME}" + "-" + "${branch}" + "-"+ "${commit}" + '",+"mode":+"EXCLUSIVE",+"":+["hudson.slaves.JNLPLauncher",+"hudson.slaves.RetentionStrategy$Always"],+"launcher":+{"stapler-class":+"hudson.slaves.JNLPLauncher",+"$class":+"hudson.slaves.JNLPLauncher",+"workDirSettings":+{"disabled":+false,+"workDirPath":+"",+"internalDir":+"remoting",+"failIfWorkDirIsMissing":+false},+"tunnel":+"",+"vmargs":+""},+"retentionStrategy":+{"stapler-class":+"hudson.slaves.RetentionStrategy$Always",+"$class":+"hudson.slaves.RetentionStrategy$Always"},+"nodeProperties":+{"stapler-class-bag":+"true"},+"type":+"hudson.slaves.DumbSlave"}\' "' + "${env.JENKINS_URL}" + 'computer/doCreateItem?name="' + "${GIT_REPO_NAME}" + "-" + "${branch}" + "-" + "${commit}" + '"&type=hudson.slaves.DumbSlave"'
 
-    echo 'Retrieve Agent Secret'
-    script {
-        agentSecret = jenkins.model.Jenkins.getInstance().getComputer("${GIT_REPO_NAME}" + "-" + "${branch}" + "-" + "$commit").getJnlpMac()
-    }
-
-    return "${agentSecret}"
+    //echo 'Retrieve Agent Secret'
+    //script {
+    //    agentSecret = jenkins.model.Jenkins.getInstance().getComputer("${GIT_REPO_NAME}" + "-" + "${branch}" + "-" + "$commit").getJnlpMac()
+    //}
+    return null
+    //return "${agentSecret}"
 }
 
 def stopagent(branch, build, commit) {
     echo "Remove Jenkins build node placeholder for repository: ${GIT_REPO_NAME}, branch: ${branch}, build: ${build} (commit:  ${commit})"
-    sh 'curl -L -s -o /dev/null -u ' + "${JENKINS_CRED}" + ' -H "Content-Type:application/x-www-form-urlencoded" -X POST "' + "${env.JENKINS_URL}" + 'computer/' + "${GIT_REPO_NAME}" + "-" + "${branch}" + "-" + "${commit}" + '/doDelete"'
+    //sh 'curl -L -s -o /dev/null -u ' + "${JENKINS_CRED}" + ' -H "Content-Type:application/x-www-form-urlencoded" -X POST "' + "${env.JENKINS_URL}" + 'computer/' + "${GIT_REPO_NAME}" + "-" + "${branch}" + "-" + "${commit}" + '/doDelete"'
     
     return null
 }
