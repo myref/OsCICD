@@ -9,16 +9,16 @@ resource "libvirt_pool" "cluster" {
 
 # Defining VM Volumes
 resource "libvirt_volume" "target-os" {
-  name      = "${var.target_type}-os.qcow2"
-  pool      = "default"
+  name      = "${git_commit}-${var.target_type}-os.qcow2"
+  pool      = "cluster"
 #  source    = "images/focal-server-cloudimg-amd64-clone.img"
   source = "https://cloud-images.ubuntu.com/releases/${var.os_version_name}/release/ubuntu-${var.os_version}-server-cloudimg-amd64.img"
   format    = "qcow2"
 }
 
 resource "libvirt_volume" "target-data" {
-  name      = "${var.target_type}-data.qcow2"
-  pool      = "default"
+  name      = "${git_commit}-${var.target_type}-data.qcow2"
+  pool      = "cluster"
   size      = var.data_disk_size
   format    = "qcow2"
 }
@@ -30,8 +30,8 @@ data "template_file" "user_data" {
 
 # Use CloudInit to add the instance
 resource "libvirt_cloudinit_disk" "commoninit" {
-  name = "commoninit.iso"
-  pool = "default"
+  name = "${git_commit}-commoninit.iso"
+  pool = "cluster"
   user_data      = "${data.template_file.user_data.rendered}"
 }
 

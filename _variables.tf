@@ -81,3 +81,9 @@ variable "kvm_user" {
   type        = string
   default     = "marks"
 }
+
+variable "git_commit" {
+  description = "Short ID of the git commit"
+  type        = string
+  default     = "123456"
+}
