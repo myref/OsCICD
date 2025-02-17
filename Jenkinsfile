@@ -55,9 +55,9 @@ pipeline {
                                 script {
                                     currentBuild.displayName = params.version
                                 }
-                                sh "terraform -chdir=${GIT_REPO_NAME} init -input=false"
                                 sh "terraform workspace new ${gitCommit}"
-                                //sh "terraform -chdir=${GIT_REPO_NAME} plan -input=false -var-file='target.auto.tfvars.json'"
+                                sh "terraform -chdir=${GIT_REPO_NAME} init -input=false"
+                                sh "terraform -chdir=${GIT_REPO_NAME} plan -input=false -var-file='target.auto.tfvars.json'"
 
                             }
                         }
