@@ -1,15 +1,14 @@
-# A pool for all cluster volumes
 resource "libvirt_pool" "cluster" {
-  name = "cluster"
+  name = "${var.git_commit}"
   type = "dir"
   target {
-    path = "/home/jenkins/cluster_storage"
+    path = "/home/jenkins/cluster_storage/${var.git_commit}"
   }
 }
 
 # Defining VM Volumes
 resource "libvirt_volume" "target-os" {
-  name      = "${git_commit}-${var.target_type}-os.qcow2"
+  name      = "${var.git_commit}-${var.target_type}-os.qcow2"
   pool      = "cluster"
 #  source    = "images/focal-server-cloudimg-amd64-clone.img"
   source = "https://cloud-images.ubuntu.com/releases/${var.os_version_name}/release/ubuntu-${var.os_version}-server-cloudimg-amd64.img"
@@ -17,7 +16,7 @@ resource "libvirt_volume" "target-os" {
 }
 
 resource "libvirt_volume" "target-data" {
-  name      = "${git_commit}-${var.target_type}-data.qcow2"
+  name      = "${var.git_commit}-${var.target_type}-data.qcow2"
   pool      = "cluster"
   size      = var.data_disk_size
   format    = "qcow2"
@@ -30,14 +29,14 @@ data "template_file" "user_data" {
 
 # Use CloudInit to add the instance
 resource "libvirt_cloudinit_disk" "commoninit" {
-  name = "${git_commit}-commoninit.iso"
+  name = "${var.git_commit}-commoninit.iso"
   pool = "cluster"
   user_data      = "${data.template_file.user_data.rendered}"
 }
 
 # Define KVM domain to create
 resource "libvirt_domain" "target" {
-  name        = "${var.target_type}-${var.target_name}"
+  name        = "${var.git_commit}-${var.target_type}-${var.target_name}"
   memory      = "2048"
   vcpu        = 2
   running     = true
@@ -70,7 +69,7 @@ resource "libvirt_domain" "target" {
 }
 
 resource "ansible_host" "target" {
-    inventory_hostname = "${var.target_type}-${var.target_name}"
+    inventory_hostname = "${var.git_commit}-${var.target_type}-${var.target_name}"
     groups = ["${var.target_type}","${var.target_type}_test"]
     vars = {
         ansible_host = "${libvirt_domain.target.network_interface.0.addresses.0}"

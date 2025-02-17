@@ -10,10 +10,11 @@ thisSecret = "verysecret"
 agentName = ""
 this_branch = ""
 this_build = ""
-os_name = "Focal"
-os_version = "20.04"
+os_name = "ubuntu"
+os_version = "2004"
 node_ip = ""
 pulp_repo = "testreports"
+ssg_version = "0.1.75"
 
 pipeline {
     agent any
@@ -55,17 +56,19 @@ pipeline {
                                 script {
                                     currentBuild.displayName = params.version
                                 }
-                                sh "terraform workspace new ${gitCommit}"
-                                sh "terraform -chdir=${GIT_REPO_NAME} init -input=false"
-                                sh "terraform -chdir=${GIT_REPO_NAME} plan -input=false -var-file='target.auto.tfvars.json'"
+                                sh "terraform init -input=false"
+                                sh "terraform workspace select -or-create=true ${gitCommit}"
+                                sh "terraform plan -input=false -var-file='target.auto.tfvars.json'"
 
                             }
                         }
                          stage('Apply') {
                              steps {
                                 echo "Deploying infrastructure for stage ${this_stage}"
-                                //  sh "terraform -chdir=${GIT_REPO_NAME} apply -input=false -auto-approve -var-file='target.auto.tfvars.json'"
-                                // node_ip = sh(returnStdout: true, script: "terraform output node_ip").trim()
+                                sh "terraform apply -input=false --auto-approve -var-file='target.auto.tfvars.json' -var 'git_commit=${gitCommit}'"
+                                script {
+                                    node_ip = sh(returnStdout: true, script: "terraform output node_ip").trim()
+                                }
                              }
                          }
                     }
@@ -79,8 +82,8 @@ pipeline {
                 stage('Smoke test') {
                     steps {
                         script {
-                            // sh "oscap-ssh user@${node_ip} 22 xccdf eval --profile xccdf_org.ssgproject.content_profile_stig --report pre-deploy_report.html ./scap-security-guide-0.1.69/ssg-ubuntu2004-ds-1.2.xml"
-                            //sh "robot --variable VALID_PASSWORD:${thisSecret} -d  test_results --variable NODE:PS1 --variable STAGE:Dev robot/smoketest.robot"
+                            // sh "oscap-ssh user@${node_ip} 22 xccdf eval --profile xccdf_org.ssgproject.content_profile_stig --report pre-deploy_report.html ./scap-security-guide-${ssg_version}/ssg-${os_name}${os_version}-ds.xml"
+                            sh "robot --variable VALID_PASSWORD:${thisSecret} -d  test_results --variable NODE:PS1 --variable STAGE:Dev robot/smoketest.robot"
                             currentBuild.result = 'SUCCESS'
                         }
                     }
@@ -95,7 +98,9 @@ pipeline {
                          stage('Destroy infrastructure') {
                              steps {
                                 echo "Destroying infrastructure for stage ${this_stage}"
-                                //  sh "terraform -chdir=${GIT_REPO_NAME} destroy -input=false -auto-approve -var-file='../testapp.auto.tfvars.json'"
+                                sh "terraform destroy -input=false -auto-approve -var-file='target.auto.tfvars.json' -var 'git_commit=${gitCommit}'"
+                                sh "terraform workspace select default"
+                                sh "terraform workspace delete ${gitCommit}"
                              }
                          }
                     }
@@ -166,16 +171,12 @@ def collect_vars(stage, my_env) {
         this_build="${env.BUILD_tag}"
     }                       
     echo "The commit is on branch ${env.JOB_NAME}, with short ID: ${gitCommit}"
-    echo 'Creating Jenkins Agent'
-    script {
-        thisSecret = startagent("${env.BRANCH_NAME}","${env.BUILD_tag}","${gitCommit}")
-    }
-
-    script {
-        agentName = "${GIT_REPO_NAME}-${env.BRANCH_NAME}-${gitCommit}"
-    }
-    echo "The agent for the next phase is: ${agentName}"
-
+    //echo 'Creating Jenkins Agent'
+    //script {
+    //    thisSecret = startagent("${env.BRANCH_NAME}","${env.BUILD_tag}","${gitCommit}")
+    //    agentName = "${GIT_REPO_NAME}-${env.BRANCH_NAME}-${gitCommit}"
+    //}
+    //echo "The agent for the next phase is: ${agentName}"
     return null
 }
 
@@ -193,19 +194,18 @@ def prepare(stage, commit) {
 
 def startagent(branch, build, commit) {
     echo "Create Jenkins build node placeholder for repository: ${GIT_REPO_NAME}, branch: ${branch}, build: ${build} (commit:  ${commit})"
-    //sh 'curl -L -s -o /dev/null -u ' + "${JENKINS_CRED}" + ' -H Content-Type:application/x-www-form-urlencoded -X POST -d \'json={"name":+"' + "${GIT_REPO_NAME}" + "-" + "${branch}" + "-" + "${commit}" + '",+"nodeDescription":+"${GIT_REPO_NAME}:+' + "${GIT_REPO_NAME}" + "-" + "${branch}" + "-" + "${commit}" + '",+"numExecutors":+"1",+"remoteFS":+"/home/jenkins",+"labelString":+"' + "${GIT_REPO_NAME}" + "-" + "${branch}" + "-"+ "${commit}" + '",+"mode":+"EXCLUSIVE",+"":+["hudson.slaves.JNLPLauncher",+"hudson.slaves.RetentionStrategy$Always"],+"launcher":+{"stapler-class":+"hudson.slaves.JNLPLauncher",+"$class":+"hudson.slaves.JNLPLauncher",+"workDirSettings":+{"disabled":+false,+"workDirPath":+"",+"internalDir":+"remoting",+"failIfWorkDirIsMissing":+false},+"tunnel":+"",+"vmargs":+""},+"retentionStrategy":+{"stapler-class":+"hudson.slaves.RetentionStrategy$Always",+"$class":+"hudson.slaves.RetentionStrategy$Always"},+"nodeProperties":+{"stapler-class-bag":+"true"},+"type":+"hudson.slaves.DumbSlave"}\' "' + "${env.JENKINS_URL}" + 'computer/doCreateItem?name="' + "${GIT_REPO_NAME}" + "-" + "${branch}" + "-" + "${commit}" + '"&type=hudson.slaves.DumbSlave"'
+    sh 'curl -L -s -o /dev/null -u ' + "${JENKINS_CRED}" + ' -H Content-Type:application/x-www-form-urlencoded -X POST -d \'json={"name":+"' + "${GIT_REPO_NAME}" + "-" + "${branch}" + "-" + "${commit}" + '",+"nodeDescription":+"${GIT_REPO_NAME}:+' + "${GIT_REPO_NAME}" + "-" + "${branch}" + "-" + "${commit}" + '",+"numExecutors":+"1",+"remoteFS":+"/home/jenkins",+"labelString":+"' + "${GIT_REPO_NAME}" + "-" + "${branch}" + "-"+ "${commit}" + '",+"mode":+"EXCLUSIVE",+"":+["hudson.slaves.JNLPLauncher",+"hudson.slaves.RetentionStrategy$Always"],+"launcher":+{"stapler-class":+"hudson.slaves.JNLPLauncher",+"$class":+"hudson.slaves.JNLPLauncher",+"workDirSettings":+{"disabled":+false,+"workDirPath":+"",+"internalDir":+"remoting",+"failIfWorkDirIsMissing":+false},+"tunnel":+"",+"vmargs":+""},+"retentionStrategy":+{"stapler-class":+"hudson.slaves.RetentionStrategy$Always",+"$class":+"hudson.slaves.RetentionStrategy$Always"},+"nodeProperties":+{"stapler-class-bag":+"true"},+"type":+"hudson.slaves.DumbSlave"}\' "' + "${env.JENKINS_URL}" + 'computer/doCreateItem?name="' + "${GIT_REPO_NAME}" + "-" + "${branch}" + "-" + "${commit}" + '"&type=hudson.slaves.DumbSlave"'
 
-    //echo 'Retrieve Agent Secret'
-    //script {
-    //    agentSecret = jenkins.model.Jenkins.getInstance().getComputer("${GIT_REPO_NAME}" + "-" + "${branch}" + "-" + "$commit").getJnlpMac()
-    //}
-    return null
-    //return "${agentSecret}"
+    echo 'Retrieve Agent Secret'
+    script {
+        agentSecret = jenkins.model.Jenkins.getInstance().getComputer("${GIT_REPO_NAME}" + "-" + "${branch}" + "-" + "$commit").getJnlpMac()
+    }
+    return "${agentSecret}"
 }
 
 def stopagent(branch, build, commit) {
     echo "Remove Jenkins build node placeholder for repository: ${GIT_REPO_NAME}, branch: ${branch}, build: ${build} (commit:  ${commit})"
-    //sh 'curl -L -s -o /dev/null -u ' + "${JENKINS_CRED}" + ' -H "Content-Type:application/x-www-form-urlencoded" -X POST "' + "${env.JENKINS_URL}" + 'computer/' + "${GIT_REPO_NAME}" + "-" + "${branch}" + "-" + "${commit}" + '/doDelete"'
+    sh 'curl -L -s -o /dev/null -u ' + "${JENKINS_CRED}" + ' -H "Content-Type:application/x-www-form-urlencoded" -X POST "' + "${env.JENKINS_URL}" + 'computer/' + "${GIT_REPO_NAME}" + "-" + "${branch}" + "-" + "${commit}" + '/doDelete"'
     
     return null
 }
@@ -217,10 +217,7 @@ def startplaybook(stage,compartiment) {
 
 def cleanup(env, commit) {
     echo "Switch to jenkins agent: ${env}"
-
-    echo 'Remove Jenkins Agent'
-    stopagent("${this_branch}","${this_build}","${commit}")
-    sh "terraform workspace select default"
-    sh "terraform workspace delete ${gitCommit}"
+    //echo 'Remove Jenkins Agent'
+    //stopagent("${this_branch}","${this_build}","${commit}")
     return null
 }

@@ -79,7 +79,7 @@ variable "data_disk_size" {
 variable "kvm_user" {
   description = "User that deploys VMs on KVM host"
   type        = string
-  default     = "marks"
+  default     = "kvmuser"
 }
 
 variable "git_commit" {
