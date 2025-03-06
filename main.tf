@@ -66,6 +66,11 @@ resource "libvirt_domain" "target" {
     listen_type = "address"
     autoport = true
   }
+
+  tpm {
+    backend_type    = "emulator"
+    backend_version = "2.0"
+  }
 }
 
 resource "ansible_host" "target" {
